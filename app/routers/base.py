@@ -21,10 +21,7 @@ from app.schemas.base import (
 base_router = APIRouter()
 
 
-@base_router.get(
-    "/province/",
-    response_model=PaginatedProvinceResponse,
-)
+@base_router.get("/province/", response_model=PaginatedProvinceResponse)
 def province_list(
     skip: int = Query(
         0,
@@ -94,10 +91,7 @@ def province_update(
 ):
     db_province = db.query(Province).filter(Province.id == province_id).first()
     if not db_province:
-        raise HTTPException(
-            status_code=404,
-            detail="Province not found",
-        )
+        raise HTTPException(status_code=404, detail="Province not found")
 
     if province_update.name:
         existing_province = (
