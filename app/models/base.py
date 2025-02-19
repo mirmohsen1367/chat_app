@@ -1,24 +1,23 @@
-from sqlalchemy import ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from sqlalchemy import ForeignKey, String, UniqueConstraint, Column, Integer
 from app.database import Base
+from sqlalchemy.orm import relationship
 
 
 class Province(Base):
     __tablename__ = "province"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    cities: Mapped[list["City"]] = relationship(back_populates="province")
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), index=True, unique=True)
+    cities = relationship("City", back_populates="province", cascade="all, delete")
+    profiles = relationship("Profile", back_populates="province", cascade="all, delete")
 
 
 class City(Base):
     __tablename__ = "city"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), nullable=False)
-    province_id: Mapped[int] = mapped_column(
-        ForeignKey("province.id", ondelete="CASCADE")
-    )
-    province: Mapped[Province] = relationship(back_populates="cities")
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), index=True)
+    province_id = Column(Integer, ForeignKey("province.id", ondelete="CASCADE"))
+    province = relationship("Province", back_populates="cities")
     __table_args__ = (
         UniqueConstraint("name", "province_id", name="_name_province_id"),
     )
+    profiles = relationship("Profile", back_populates="city")
