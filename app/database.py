@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from decouple import config
 
-DATABASE_URL = "postgresql://postgres:Mohsen#1367@localhost:5432/resa_fastapi"
+DATABASE_URL = config("DATABASE")
 
 # create a postgres engine instance
 engine = create_engine(DATABASE_URL)
@@ -12,7 +13,6 @@ class Base(DeclarativeBase):
     pass
 
 
-# Create session local class for session marker
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 

@@ -34,5 +34,6 @@ app/scripts
 .env
 app/.env
 scripts
-.python-version
+
 /.python-version
+.python-version

@@ -2,15 +2,9 @@ import datetime
 
 from pydantic import AfterValidator
 from pydantic import BaseModel
-from typing_extensions import Annotated
 
-from ..helpers.validators import validate_is_strong
 from ..helpers.validators import validate_phone_number
-
-
-class CreateUser(BaseModel):
-    phone_number: Annotated[str, AfterValidator(validate_phone_number)]
-    password: Annotated[str, AfterValidator(validate_is_strong)]
+from typing import List, Annotated
 
 
 class RequestDetails(BaseModel):
@@ -22,17 +16,21 @@ class TokenSchema(BaseModel):
     access_token: str
 
 
-# class ChangePassword(BaseModel):
-#     phone_number: str
-#     old_password: str
-#     new_password: Annotated[str, AfterValidator(validate_is_strong)]
-
-
-class UserResponse(BaseModel):
+class ProfileResponse(BaseModel):
     id: int
     username: str
     phone_number: str
+    city: str
+    province: str
     is_active: bool
+    is_staff: bool
+
+
+class PaginatedProfileResponse(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    profiles: List[ProfileResponse]
 
 
 class TokenCreate(BaseModel):
