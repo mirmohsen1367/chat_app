@@ -159,10 +159,7 @@ def city_create(
     province = get_or_404(db, Province, request.province_id)
     city_exists = (
         db.query(City)
-        .filter(
-            City.province_id == province.id,
-            City.name == request.name,
-        )
+        .filter(City.province_id == province.id, City.name == request.name)
         .first()
     )
     if city_exists:
@@ -170,10 +167,7 @@ def city_create(
             status_code=400,
             detail="City with this name and province_id already exists!",
         )
-    new_city = City(
-        name=request.name,
-        province_id=province.id,
-    )
+    new_city = City(name=request.name, province_id=province.id)
     db.add(new_city)
     db.commit()
     return {"message": "City created successfully."}

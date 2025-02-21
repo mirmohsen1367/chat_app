@@ -3,12 +3,16 @@ import datetime
 from pydantic import AfterValidator
 from pydantic import BaseModel
 
-from ..helpers.validators import validate_phone_number
+from app.schemas.base import CitySchema, ProvinceResponse
+
+from ..validations.user_profile_validation import CreateUserValidation
 from typing import List, Annotated
 
 
 class RequestDetails(BaseModel):
-    phone_number: Annotated[str, AfterValidator(validate_phone_number)]
+    phone_number: Annotated[
+        str, AfterValidator(CreateUserValidation.validate_phone_number)
+    ]
     password: str
 
 
@@ -20,8 +24,8 @@ class ProfileResponse(BaseModel):
     id: int
     username: str
     phone_number: str
-    city: str
-    province: str
+    city: CitySchema
+    province: ProvinceResponse
     is_active: bool
     is_staff: bool
 

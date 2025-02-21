@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from .routers.base import base_router
+
 from .routers.users import user_router
 from fastapi.staticfiles import StaticFiles
 from .config import BASE_DIR
