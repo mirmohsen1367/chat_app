@@ -4,28 +4,20 @@ from sqlalchemy.orm import Session
 from app.database import get_session
 from app.helpers.auth_tools import sign_jwt
 from app.helpers.filter import ProfileFilter
-from app.helpers.helper_func import create_image_media, verify_password
+from app.helpers.helper_func import verify_password
 from app.helpers.permissions import is_admin
 from app.models.users import Profile, User
 from app.schemas.users import (
-    # PaginatedProfileResponse,
     RequestDetails,
     TokenSchema,
 )
 from fastapi import UploadFile, Form, File, Query
 from typing import Annotated, Optional
 
-# from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload
+from decouple import config
+from ..validations.user_profile_validation import user_profile_factory
 
-from ..validations.user_profile_validation import (
-    CreateUserValidation,
-    # UpdateUserValidation,
-    CreateProfileValidation,
-    # UpdateProfileValidation,
-)
-
-# from ..models.base import City, Province
-# from decouple import config
 
 user_router = APIRouter()
 
@@ -84,46 +76,6 @@ def users_list(
     return {"total": total, "skip": skip, "limit": limit, "profiles": profiles_list}
 
 
-# @user_router.get("/{profile_id}/")
-# def users_deatil(
-#     profile_id: int, _=Depends(is_admin), db: Session = Depends(get_session)
-# ):
-#     query = (
-#         (
-#             db.query(Profile)
-#             .options(
-#                 joinedload(Profile.user),
-#                 joinedload(Profile.city),
-#                 joinedload(Profile.province),
-#             )
-#             .order_by(Profile.id.desc())
-#         )
-#         .filter(Profile.id == profile_id)
-#         .first()
-#     )
-
-
-#     profile = query.filter(Profile.id == profile_id).first()
-#     if not profile:
-#         raise HTTPException(detail="Profile not found", status_code=404)
-
-#     if profile[1]:
-#         image = config("HOST", default="http://127.0.0.1:8000") + profile[1]
-#     else:
-#         image = None
-#     return {
-#         "image": image,
-#         "first_name": profile[2],
-#         "last_name": profile[3],
-#         "username": profile[4],
-#         "phone_number": profile[5],
-#         "is_active": profile[6],
-#         "is_staff": profile[7],
-#         "city": profile[8],
-#         "province": profile[9],
-#     }
-
-
 @user_router.post("")
 def create_user(
     username: Annotated[str, Form()],
@@ -137,27 +89,122 @@ def create_user(
     db: Session = Depends(get_session),
     _=Depends(is_admin),
 ):
-    create_user_validation = CreateUserValidation(
+    user_validation_class = user_profile_factory("create_user_validation")
+    create_user_validation = user_validation_class(
         db=db, username=username, phone_number=phone_number, password=password
     )
+
     user_data = create_user_validation.validate_input_data()
-    create_profile_validation = CreateProfileValidation(
+    user = User(**user_data)
+    profile_validation_class = user_profile_factory("create_profile_validation")
+    create_profile_validation = profile_validation_class(
         db=db,
         province=province,
         city=city,
-        image=image,
         first_name=first_name,
         last_name=last_name,
+        image=image,
+        phone_number=phone_number,
     )
-
-    user = User(**user_data)
     profile_data = create_profile_validation.validate_input_data()
     profile_data.update({"user": user})
     profile = Profile(**profile_data)
-    if "image" in profile_data.keys() and profile_data["image"] is not None:
-        create_image_media(
-            folder_name=user_data["phone_number"], image=profile_data["image"]
-        )
     db.add_all([user, profile])
     db.commit()
     return {"message": "User created successfully"}
+
+
+@user_router.get("/{profile_id}/")
+def users_deatil(
+    profile_id: int, _=Depends(is_admin), db: Session = Depends(get_session)
+):
+    query = (
+        db.query(Profile)
+        .options(
+            joinedload(Profile.user),
+            joinedload(Profile.city),
+            joinedload(Profile.province),
+        )
+        .order_by(Profile.id.desc())
+    ).filter(Profile.id == profile_id)
+
+    profile = query.filter(Profile.id == profile_id).first()
+    if not profile:
+        raise HTTPException(detail="Profile not found", status_code=404)
+
+    return {
+        "image": config("HOST", default="http://127.0.0.1:8000") + profile.image
+        if profile.image
+        else None,
+        "first_name": profile.first_name,
+        "last_name": profile.last_name,
+        "username": profile.user.username,
+        "phone_number": profile.user.username,
+        "is_active": profile.user.is_active,
+        "is_staff": profile.user.is_staff,
+        "city": {"id": profile.city.id, "name": profile.city.name},
+        "province": {"id": profile.province.id, "name": profile.province.name},
+    }
+
+
+@user_router.patch("/{profile_id}/")
+def update_user(
+    profile_id: int,
+    username: Annotated[str, Form()] = None,
+    phone_number: Annotated[str, Form()] = None,
+    password: Annotated[str, Form()] = None,
+    province: Annotated[int, Form()] = None,
+    city: Annotated[int, Form()] = None,
+    first_name: Annotated[str, Form()] = None,
+    last_name: Annotated[str, Form()] = None,
+    image: Annotated[UploadFile, File()] = None,
+    db: Session = Depends(get_session),
+    _=Depends(is_admin),
+):
+    query = (
+        db.query(Profile)
+        .options(
+            joinedload(Profile.user),
+            joinedload(Profile.city),
+            joinedload(Profile.province),
+        )
+        .order_by(Profile.id.desc())
+    ).filter(Profile.id == profile_id)
+    profile = query.filter(Profile.id == profile_id).first()
+    if not profile:
+        raise HTTPException(detail="Profile not found", status_code=404)
+    user = profile.user
+    user_validation_class = user_profile_factory("update_user_validation")
+    update_user_validation = user_validation_class(
+        db=db,
+        username=username,
+        phone_number=phone_number,
+        password=password,
+        user=user,
+    )
+    user_data = update_user_validation.validate_input_data()
+    profile_validation_class = user_profile_factory("update_profile_validation")
+    update_profile_validation = profile_validation_class(
+        db=db,
+        province=province,
+        city=city,
+        first_name=first_name,
+        last_name=last_name,
+        image=image,
+        phone_number=phone_number if phone_number else user.phone_number,
+    )
+    profile_data = update_profile_validation.validate_input_data()
+
+    if not user_data and not profile_data:
+        return {"message": "ok"}
+
+    if user_data:
+        for field, value in user_data.items():
+            setattr(user, field, value)
+
+    if profile_data:
+        for field, value in profile_data.items():
+            setattr(profile, field, value)
+
+    db.commit()
+    return {"message": "Profile updated successfully."}
