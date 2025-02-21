@@ -38,9 +38,15 @@ class CityUpdate(BaseModel):
     province_id: Optional[str] = None
 
 
-class CityResponse(CityBase):
+class CityResponse(BaseModel):
     id: int
+    name: str
     province: ProvinceResponse
+
+
+class CitySchema(BaseModel):
+    id: int
+    name: str
 
 
 class PaginatedCityResponse(BaseModel):

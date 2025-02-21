@@ -4,7 +4,6 @@ import jwt
 from decouple import config
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from passlib.context import CryptContext
 
 
 JWT_SECRET = config("secret")
@@ -37,17 +36,6 @@ def decode_jwt(token: str) -> dict:
             return None
     except Exception:
         return {}
-
-
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def get_hashed_password(password: str) -> str:
-    return password_context.hash(password)
-
-
-def verify_password(password: str, hashed_pass: str) -> bool:
-    return password_context.verify(password, hashed_pass)
 
 
 class JWTBearer(HTTPBearer):

@@ -1,5 +1,5 @@
-from app.helpers.auth_tools import get_hashed_password
 from app.database import SessionLocal
+from app.helpers.helper_func import get_hashed_password
 from app.helpers.validators import validate_phone_number, validate_is_strong
 from app.models.users import User, Profile
 from app.models.base import City, Province

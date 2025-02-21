@@ -1,36 +1,13 @@
 import re
 from fastapi import HTTPException
 
-from app.helpers.helper_func import get_hashed_password
-
-from ..models.base import City, Province
+from ..helpers.helper_func import get_hashed_password
+from ..interface.user_profile_validation_interface import CreateUserValidationInterface
 from ..models.users import User
+from .base_validation import BaseValidation
 
 
-class BaseValidation:
-    def __init__(self, db):
-        self.db = db
-
-    def validate_province(self, value):
-        province = self.db.query(Province).filter(Province.id == value).first()
-        if province:
-            return province
-        else:
-            raise HTTPException(detail="Province not found", status_code=400)
-
-    def validate_city(self, province_id, value):
-        city = (
-            self.db.query(City)
-            .filter(City.id == value, City.province_id == province_id)
-            .first()
-        )
-        if city:
-            return city
-        else:
-            raise HTTPException(detail="City not found", status_code=400)
-
-
-class CreateUserValidation:
+class CreateUserValidation(CreateUserValidationInterface):
     def __init__(
         self,
         db,
@@ -76,8 +53,8 @@ class CreateUserValidation:
             raise HTTPException(detail="Invalid phone_number", status_code=400)
         return value
 
-    def validate_phone_number_exists(self, value):
-        phone_number = self.validate_phone_number(value=value)
+    def validate_phone_number_exists(self):
+        phone_number = self.validate_phone_number(value=self.phone_number)
         user = self.db.query(User).filter(User.phone_number == phone_number).first()
         if user is not None:
             raise HTTPException(
@@ -85,18 +62,18 @@ class CreateUserValidation:
             )
         return phone_number
 
-    def validate_username_exists(self, value):
-        user = self.db.query(User).filter(User.username == value).first()
+    def validate_username_exists(self):
+        user = self.db.query(User).filter(User.username == self.username).first()
         if user is not None:
             raise HTTPException(
                 detail="A user with username already exists", status_code=400
             )
-        return value
+        return self.username
 
     def validate_input_data(self):
         username = self.validate_username_exists()
         phone_number = self.validate_phone_number_exists()
-        password = get_hashed_password(self.validate_is_strong())
+        password = get_hashed_password(self.validate_is_strong(self.password))
         return {
             "username": username,
             "phone_number": phone_number,
@@ -131,7 +108,7 @@ class UpdateUserValidation(CreateUserValidation):
 
 
 class CreateProfileValidation:
-    def __init__(self, db, province, city, image, first_name=None, last_name=None):
+    def __init__(self, db, province, city, image=None, first_name=None, last_name=None):
         self.db = db
         self.province = province
         self.city = city
@@ -151,16 +128,20 @@ class CreateProfileValidation:
 
     def validate_input_data(self):
         base_validation = BaseValidation(self.db)
-        province = base_validation.validate_province_id(self.province)
-        city = base_validation.validate_city_id(self.city, self.province)
-        image = self.validate_image(self.image)
-        return {
+        province = base_validation.validate_province(self.province)
+        city = base_validation.validate_city(self.city, self.province)
+        data = {
             "province": province,
             "city": city,
-            "image": image,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
         }
+        if self.image:
+            self.validate_image(self.image)
+            data.update({"image": self.image})
+        if self.first_name:
+            data.update({"first_name": self.first_name})
+        if self.last_name:
+            data.update({"last_name": self.last_name})
+        return data
 
 
 class UpdateProfileValidation(CreateProfileValidation):

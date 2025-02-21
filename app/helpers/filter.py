@@ -4,6 +4,7 @@ from app.models.base import City, Province
 from typing import Optional
 
 from app.models.users import Profile, User
+from sqlalchemy.orm import joinedload
 
 
 class ProvinceFilter:
@@ -22,7 +23,11 @@ class CityFilter:
         self.db = db
 
     def filter(self, name: Optional[str] = None, province_id: Optional[int] = None):
-        query = self.db.query(City).join(Province).order_by(City.id.desc())
+        query = (
+            self.db.query(City)
+            .options(joinedload(City.province))
+            .order_by(City.id.desc())
+        )
         if name:
             query = query.filter(City.name.ilike(f"%{name}%"))
         if province_id:
@@ -44,20 +49,17 @@ class ProfileFilter:
         is_staff: Optional[int] = None,
     ):
         query = (
-            self.db.query(
-                Profile.id,
-                User.username,
-                User.phone_number,
-                User.is_active,
-                User.is_staff,
-                City.name,
-                Province.name,
+            self.db.query(Profile)
+            .join(User)
+            .join(Province)
+            .join(City)
+            .options(
+                joinedload(Profile.user),
+                joinedload(Profile.city),
+                joinedload(Profile.province),
             )
-            .join(User, Profile.user_id == User.id)
-            .join(Province, Profile.province_id == Province.id)
-            .join(City, Profile.city_id == City.id)
-        ).order_by(Profile.id.desc())
-
+            .order_by(Profile.id.desc())
+        )
         if username:
             query = query.filter(User.username.ilike(f"%{username}%"))
         if phone_number:
